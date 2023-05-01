@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "udp_server.h": "c",
+        "checksum.h": "c",
+        "errno.h": "c",
+        "udp.h": "c",
+        "compare": "cpp"
+    }
+}

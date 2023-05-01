@@ -9,13 +9,7 @@
 
 void hex_to_text(char* hex_string);
 
-void main(int argc, char *argv[]) {
-
-    if (argc != 2) {
-        fprintf(stderr, "Server udp usage: sudo %s <port>\n", argv[0]);
-        exit(1);
-    }
-	int port = atoi(argv[1]);
+void udp_server(int port) {
     // Crear socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
