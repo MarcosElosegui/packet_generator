@@ -26,4 +26,6 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 
 void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack);
 
+int syn_flood(int sockfd, char *address_dst, char *address_src);
+
 #endif

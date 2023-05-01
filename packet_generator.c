@@ -43,7 +43,8 @@ int main(int argc, char *argv[]){
     //Creamos un socket RAW indica que no se generen los headers del protocolo ni el de ip
 	if(strcmp(argv[5], "udp") == 0){
 		sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
-	} else if((strcmp(argv[5], "tcp") == 0)){
+	} else if((strcmp(argv[5], "tcp") == 0) || (strcmp(argv[5], "syn_flood") == 0)){
+		printf("Ha entrado");
 		sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_TCP);
 	}
 
@@ -62,30 +63,29 @@ int main(int argc, char *argv[]){
 		exit(0);
 	}
 
-	// direccion IP de destino
-	struct sockaddr_in daddr;
-	daddr.sin_family = AF_INET;
-	daddr.sin_port = htons(atoi(argv[4]));
-	if (inet_pton(AF_INET, argv[1], &daddr.sin_addr) != 1)
-	{
-		printf("destination IP configuration failed\n");
-		return 1;
-	}
-
-	// direccion IP de origen
-	struct sockaddr_in saddr;
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(rand() % 65535); // random client port
-	if (inet_pton(AF_INET, argv[2], &saddr.sin_addr) != 1)
-	{
-		printf("source IP configuration failed\n");
-		return 1;
-	}
-
     while(1){//for(i = 0; i < 1; i++){
+		// direccion IP de destino
+		struct sockaddr_in daddr;
+		daddr.sin_family = AF_INET;
+		daddr.sin_port = htons(atoi(argv[4]));
+		if (inet_pton(AF_INET, argv[1], &daddr.sin_addr) != 1)
+		{
+			printf("destination IP configuration failed\n");
+			return 1;
+		}
 
-        struct in_addr curr_addr;
-        curr_addr.s_addr = ntohl(net_addr.s_addr) + i;
+		// direccion IP de origen
+		struct sockaddr_in saddr;
+		saddr.sin_family = AF_INET;
+		saddr.sin_port = htons(rand() % 65535); // random client port
+		if (inet_pton(AF_INET, argv[2], &saddr.sin_addr) != 1)
+		{
+			printf("source IP configuration failed\n");
+			return 1;
+		}
+
+        /*struct in_addr curr_addr;
+        curr_addr.s_addr = ntohl(net_addr.s_addr) + i;*/
 
 		if(strcmp(argv[5], "udp") == 0){
 
@@ -139,6 +139,8 @@ int main(int argc, char *argv[]){
 					printf("successfully sent %d bytes ACK!\n", sent);
 				}
 			}
+		} else if((strcmp(argv[5], "syn_flood") == 0)){
+			syn_flood(sockfd, argv[1], argv[2]);
 		}
         sleep(1);
     }
