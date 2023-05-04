@@ -1,15 +1,20 @@
-OBJECTS := packet_generator.o
 CC = gcc
 CFLAGS = -Wall -Wextra -Wpedantic -std=gnu11
 TARGET = packet_generator
-LIBS = 
+STARGET = server
 
-all: $(TARGET)
+LIBS =
+# define the C source files
+SRCS = packet_generator.c tcp.c udp.c checksum.c
+SSRCS = server.c udp_server.c tcp_server.c
 
-packet_generator.o: packet_generator.c
+all: cliente server
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+cliente: $(SRCS) 
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+
+server: $(SSRCS)
+	$(CC) $(CFLAGS) -o $(STARGET) $(SSRCS)
 
 clean:
-	$(RM) $(OBJECTS) $(TARGET)
+	$(RM) *.o *~ $(TARGET) $(SERV_TARGET)

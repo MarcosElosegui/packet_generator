@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <limits.h>
+#include "./includes/udp_server.h"
 
 void hex_to_text(char* hex_string);
 

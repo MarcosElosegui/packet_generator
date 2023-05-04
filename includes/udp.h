@@ -13,8 +13,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "checksum.h"
-#include "../udp.c"
-
 
 #define DATAGRAM_LEN 4096
 

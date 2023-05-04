@@ -5,6 +5,8 @@
         "checksum.h": "c",
         "errno.h": "c",
         "udp.h": "c",
-        "compare": "cpp"
+        "compare": "cpp",
+        "unistd.h": "c",
+        "tcp_server.h": "c"
     }
 }

