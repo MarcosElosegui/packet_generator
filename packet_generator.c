@@ -214,7 +214,7 @@ int main(int argc, char *argv[]){
 		} else if((strcmp(protocolo, "syn_flood") == 0)){
 			syn_flood(sockfd, destino, ip_addr, atoi(puerto));
 		} else if((strcmp(protocolo, "memcached") == 0)){
-			FILE* mem_servers = fopen("./memcached/memcached-servers.txt", "r");
+			FILE* mem_servers = fopen("./listas/memcached-servers.txt", "r");
 			if (mem_servers == NULL) {
 				printf("Failed to open the file.\n");
 				return 1;
