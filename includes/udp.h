@@ -16,6 +16,6 @@
 
 #define DATAGRAM_LEN 4096
 
-void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len);
+void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje);
 
 #endif

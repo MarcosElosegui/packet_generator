@@ -14,7 +14,7 @@
 
 #define DATAGRAM_LEN 4096
 
-void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len){
+void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje){
 
     char *data , *pseudogram;
 
@@ -29,12 +29,7 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
 
 	// Payload del paquete
 	data = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
-	strcpy(data , "Paquete custom");
-
-    /*strcpy(source_ip , source_addr);
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    sin.sin_addr.s_addr = inet_addr (addr);*/
+	strcpy(data , mensaje);
 	
 	// IP header
 	iph->ihl = 5;

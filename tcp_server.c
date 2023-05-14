@@ -11,13 +11,11 @@
 int tcp_server(int port) {
     int sockfd, newsockfd;
     struct sockaddr_in server_addr, client_addr;
-    int addrlen = sizeof(client_addr);
-    char buffer[BUFFER] = {0};
-    char *hello = "Hello from server";
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    //char *hello = "Hello from server";
     
     // Crear socket
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    printf("%d", sockfd);
+    sockfd = socket(PF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket creation failed");
         exit(EXIT_FAILURE);
@@ -43,7 +41,13 @@ int tcp_server(int port) {
     //newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
     printf("Escuchando en el puerto %d...\n", port);
     while(1){
-        newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
+        /*ssize_t bytes_received;
+        while ((bytes_received = recv(newsockfd, buffer, BUFFER, 0)) > 0) {
+            printf("Received %zd bytes: %s\n", bytes_received, buffer);
+            memset(buffer, 0, sizeof(buffer));
+        }*/
+
+        newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, &addrlen);
 
         printf("no llega ni pa dios");
 
@@ -51,14 +55,8 @@ int tcp_server(int port) {
             perror("accept failed");
             exit(EXIT_FAILURE);
         }
-
-        ssize_t bytes_received;
-        while ((bytes_received = recv(newsockfd, buffer, BUFFER, 0)) > 0) {
-            printf("Received %zd bytes: %s\n", bytes_received, buffer);
-            memset(buffer, 0, sizeof(buffer));
-        }
     }
-    
+    /*
     printf("Received message from client: %s\n", buffer);
     
     // Send data to client
@@ -67,7 +65,7 @@ int tcp_server(int port) {
         perror("send failed");
         exit(EXIT_FAILURE);
     }
-    
+    */
     printf("Message sent to client\n");
     close(newsockfd);
     close(sockfd);
