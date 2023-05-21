@@ -15,6 +15,7 @@
 #define PACKET_LEN 4096
 #define OPT_SIZE 20
 
+//Funcion que dados una direccion y un puerto crea una estructura sockaddr_in
 int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
 	struct sockaddr_in host;
 	host.sin_family = AF_INET;
@@ -28,6 +29,7 @@ int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
 	return 0;
 }
 
+//Funcion que crea un paquete SYN TCP con la direccion de origen y destino dadas
 void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** packet_ret, int* packet_len){
 
     char *packet = calloc(PACKET_LEN, sizeof(char));
@@ -104,6 +106,7 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	free(pseudogram);
 }
 
+// Funcion que espera a recibir un paquete por el socket dado
 int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_in *dst)
 {
 	unsigned short dst_port;
@@ -120,6 +123,7 @@ int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_i
 	return received;
 }
 
+// Funcion que crea un paquete ACK con direccion de origen, destino, numero de sequencia y numero de ack dado
 void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t seq, int32_t ack_seq, char** out_packet, int* out_packet_len)
 {
 	// datagram to represent the packet
@@ -179,6 +183,7 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	free(pseudogram);
 }
 
+// Funcion que lee el numero de sequencia y ack del paquete dado
 void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 {
 	// read sequence number
@@ -194,6 +199,7 @@ void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 	printf("acknowledgement number: %lu\n", (unsigned long)*ack);
 }
 
+// Funcion que genera paquetes SYN tcp con direccion de origen, destino y puerto dados en bucle
 int syn_flood(int sockfd, char *address_dst, char *address_src, int port){
 	while(1){
 		// direccion IP de destino

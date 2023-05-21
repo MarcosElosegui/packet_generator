@@ -16,6 +16,33 @@
 
 #define DATAGRAM_LEN 4096
 
+// DNS header structure
+typedef struct {
+    unsigned short id;
+    unsigned char rd:1;
+    unsigned char tc:1;
+    unsigned char aa:1;
+    unsigned char opcode:4;
+    unsigned char qr:1;
+    unsigned char rcode:4;
+    unsigned char z:3;
+    unsigned char ra:1;
+    unsigned short qdcount;
+    unsigned short ancount;
+    unsigned short nscount;
+    unsigned short arcount;
+} dns_header;
+
+// DNS question structure
+typedef struct {
+    unsigned short qtype;
+    unsigned short qclass;
+} dns_question;
+
 void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje);
+void ssdp(int sock, struct sockaddr_in* dst, struct sockaddr_in* src);
+void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len);
+void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje);
+
 
 #endif

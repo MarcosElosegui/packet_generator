@@ -1,5 +1,5 @@
-#ifndef PSEUDOHEADER_H
-#define PSEUDOHEADER_H
+#ifndef CHECKSUM_H
+#define CHECKSUM_H
 
 #include <stdio.h>
 #include <string.h>
@@ -22,4 +22,4 @@ struct pseudo_header
 
 unsigned short csum(unsigned short *ptr,int nbytes);
 
-#endif /* PSEUDOHEADER_H */
+#endif

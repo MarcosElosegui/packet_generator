@@ -12,9 +12,8 @@ int tcp_server(int port) {
     int sockfd, newsockfd;
     struct sockaddr_in server_addr, client_addr;
     socklen_t addrlen = sizeof(struct sockaddr_in);
-    //char *hello = "Hello from server";
     
-    // Crear socket
+    // Crear socket TCP
     sockfd = socket(PF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("socket creation failed");

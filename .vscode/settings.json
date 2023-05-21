@@ -8,6 +8,7 @@
         "compare": "cpp",
         "unistd.h": "c",
         "tcp_server.h": "c",
-        "tcp.h": "c"
+        "tcp.h": "c",
+        "socket.h": "c"
     }
 }
