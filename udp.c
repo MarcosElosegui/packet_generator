@@ -129,23 +129,12 @@ void ssdp(int sock, struct sockaddr_in* dst, struct sockaddr_in* src) {
     //}
 }
 
-// Funcion que crea un datagrama UDP con la direccion de origen, destino y payload proporcionos
+// Funcion que crea un datagrama UDP con un query DNS con el flag ANY de www.google.com
 void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len){
 
 	char *datagram = calloc(DATAGRAM_LEN, sizeof(char));
 
-	//UDP header
-	struct udphdr *udph = (struct udphdr *) datagram;
-	struct pseudo_header psh;
-
-	// header udp
-	udph->source = src->sin_port;
-	udph->dest = dst->sin_port;
-	udph->len = htons(sizeof(struct udphdr));
-	udph->check = 0;
-
-	// Creamos el paquete dns
-	char* paquete_DNS = datagram + sizeof(struct udphdr);
+	char* paquete_DNS = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
 
 	// Set up the DNS header
 	dns_header* dns = (dns_header*)paquete_DNS;
@@ -153,22 +142,28 @@ void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_r
 	dns->rd = 1;                    // Recursion
 	dns->qdcount = htons(1);        // 1 consulta
 
-	// Set up the DNS question
+	// Preparar la pregunta dns
 	char* qname = paquete_DNS + sizeof(dns_header);
-	strcpy(qname, "google.com");    // Domain name to query
+	strcpy(qname, "\x03""www\x06""google\x03""com");   // Nombre del dominio a consultar
 
 	dns_question* question = (dns_question*)(qname + strlen(qname) + 1);
 	question->qtype = htons(255);    // Consulta ANY
 	question->qclass = htons(1);     // Clase de la consulta IN
 
-    //IP header
+	// header UDP
+	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct iphdr));
+	udph->source = src->sin_port;
+	udph->dest = dst->sin_port;
+	udph->len = htons(sizeof(struct udphdr) + sizeof(dns_header) + strlen(qname) + 1 + sizeof(dns_question));
+	udph->check = 0;
+
+    // header IP
 	struct iphdr *iph = (struct iphdr *) datagram;
 	
-	// IP header
 	iph->ihl = 5;
 	iph->version = 4;
 	iph->tos = 0;
-	iph->tot_len = sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen(qname) + 1 + sizeof(dns_question);
+	iph->tot_len = htons(sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen(qname) + 1 + sizeof(dns_question));
 	iph->id = htonl(rand() % 78123);
 	iph->frag_off = 0;
 	iph->ttl = MAXTTL;
@@ -179,24 +174,6 @@ void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_r
 	
 	//Ip checksum
 	iph->check = csum ((unsigned short *) datagram, iph->tot_len);
-	
-	//UDP checksum
-	psh.source_address = src->sin_addr.s_addr;
-	psh.dest_address = dst->sin_addr.s_addr;
-	psh.placeholder = 0;
-	psh.protocol = IPPROTO_UDP;
-	psh.prt_length = htons(sizeof(struct udphdr) + sizeof(dns_header) + strlen(qname) + 1 + sizeof(dns_question));
-	
-	unsigned char* pseudoPacket = (unsigned char*)&psh;
-    int pseudoPacketLen = sizeof(struct pseudo_header);
-    int udpLen = sizeof(struct udphdr) + sizeof(dns_header) + strlen(qname) + 1 + sizeof(dns_question);
-    unsigned char* udpPacket = (unsigned char*)udph;
-    int udpPacketLen = sizeof(struct udphdr) + udpLen;
-    unsigned char* checksumData = (unsigned char*)malloc(pseudoPacketLen + udpPacketLen);
-    memcpy(checksumData, pseudoPacket, pseudoPacketLen);
-    memcpy(checksumData + pseudoPacketLen, udpPacket, udpPacketLen);
-    udph->check = csum((unsigned short*)checksumData, pseudoPacketLen + udpPacketLen);
-    free(checksumData);
 
     *datagram_ret = datagram;
 	*datagram_len = iph->tot_len;

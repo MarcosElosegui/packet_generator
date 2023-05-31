@@ -3,9 +3,9 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <netinet/tcp.h>	//tcp header
-#include <netinet/udp.h>	// udp header
-#include <netinet/ip.h>	// ip_header
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <netinet/ip.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -86,19 +86,7 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	
 	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header) , tcph , sizeof(struct tcphdr) + OPT_SIZE);
-/*
-	packet[40] = 0x02;
-	packet[41] = 0x04;
-	int16_t mss = htons(48);
-	memcpy(packet + 42, &mss, sizeof(int16_t));
-	packet[44] = 0x04;
-	packet[45] = 0x02;
-	pseudogram[32] = 0x02;
-	pseudogram[33] = 0x04;
-	memcpy(pseudogram + 34, &mss, sizeof(int16_t));
-	pseudogram[36] = 0x04;
-	pseudogram[37] = 0x02;
-	*/
+
 	tcph->check = csum( (unsigned short*) pseudogram , psize);
 
     *packet_ret = packet;
@@ -126,15 +114,15 @@ int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_i
 // Funcion que crea un paquete ACK con direccion de origen, destino, numero de sequencia y numero de ack dado
 void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t seq, int32_t ack_seq, char** out_packet, int* out_packet_len)
 {
-	// datagram to represent the packet
+	// representacion del datagrama
 	char *datagram = calloc(PACKET_LEN, sizeof(char));
 
-	// required structs for IP and TCP header
+	// header ip y tcp
 	struct iphdr *iph = (struct iphdr*)datagram;
 	struct tcphdr *tcph = (struct tcphdr*)(datagram + sizeof(struct iphdr));
 	struct pseudo_header psh;
 
-	// IP header configuration
+	// Configuracion header IP
 	iph->ihl = 5;
 	iph->version = 4;
 	iph->tos = 0;
@@ -147,7 +135,7 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	iph->saddr = src->sin_addr.s_addr;
 	iph->daddr = dst->sin_addr.s_addr;
 
-	// TCP header configuration
+	// Configuracion header TCP
 	tcph->source = src->sin_port;
 	tcph->dest = dst->sin_port;
 	tcph->seq = htonl(seq + 1);
@@ -163,14 +151,14 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	tcph->window = htons(5840); // window size
 	tcph->urg_ptr = 0;
 
-	// TCP pseudo header for checksum calculation
+	// pseudo header
 	psh.source_address = src->sin_addr.s_addr;
 	psh.dest_address = dst->sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_TCP;
 	psh.prt_length = htons(sizeof(struct tcphdr));
 	int psize = sizeof(struct pseudo_header) + sizeof(struct tcphdr) + OPT_SIZE;
-	// fill pseudo packet
+	
 	char* pseudogram = malloc(psize);
 	memcpy(pseudogram, (char*)&psh, sizeof(struct pseudo_header));
 	memcpy(pseudogram + sizeof(struct pseudo_header), tcph, sizeof(struct tcphdr) + OPT_SIZE);

@@ -3,7 +3,7 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <netinet/tcp.h>	//tcp header
+#include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -342,7 +342,7 @@ int main(int argc, char *argv[]){
 
 			udp_dns(&saddr, &daddr, &datagram, &datagram_len);
 
-			if(sendto (sockfd, datagram, sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen("google.com") + 1 + sizeof(dns_question),	0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
+			if(sendto (sockfd, datagram, sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen("\x03""www\x06""google\x03""com") + 1 + sizeof(dns_question), 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
 			{
 				perror("No se ha podido enviar el datagrama");
 			} else {

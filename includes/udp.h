@@ -16,7 +16,7 @@
 
 #define DATAGRAM_LEN 4096
 
-// DNS header structure
+// header DNS
 typedef struct {
     unsigned short id;
     unsigned char rd:1;
@@ -25,7 +25,7 @@ typedef struct {
     unsigned char opcode:4;
     unsigned char qr:1;
     unsigned char rcode:4;
-    unsigned char z:3;
+    unsigned char z:1;
     unsigned char ra:1;
     unsigned short qdcount;
     unsigned short ancount;
@@ -33,7 +33,7 @@ typedef struct {
     unsigned short arcount;
 } dns_header;
 
-// DNS question structure
+// pregunta DNS
 typedef struct {
     unsigned short qtype;
     unsigned short qclass;
