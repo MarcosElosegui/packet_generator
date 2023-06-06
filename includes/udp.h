@@ -43,6 +43,6 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
 void ssdp(int sock, struct sockaddr_in* dst, struct sockaddr_in* src);
 void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len);
 void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje);
-
+void ntp_amp(int sock, char* addr_src);
 
 #endif

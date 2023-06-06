@@ -11,7 +11,7 @@ SSRCS = server.c udp_server.c tcp_server.c
 all: cliente server
 
 cliente: $(SRCS) 
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS) -pthread -g
 
 server: $(SSRCS)
 	$(CC) $(CFLAGS) -o $(STARGET) $(SSRCS)
