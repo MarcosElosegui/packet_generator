@@ -9,6 +9,9 @@
         "unistd.h": "c",
         "tcp_server.h": "c",
         "tcp.h": "c",
-        "socket.h": "c"
+        "socket.h": "c",
+        "icmp.h": "c",
+        "inet.h": "c",
+        "icmp_server.h": "c"
     }
 }

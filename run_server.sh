@@ -2,4 +2,4 @@
 
 cd "$(dirname "$0")" || exit
 
-./server "$@" # <protocolo> <puerto>
+./server "$@" # -prt <protocolo> -p <puerto>

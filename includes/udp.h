@@ -12,9 +12,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "checksum.h"
 
 #define DATAGRAM_LEN 4096
+#define IP_LENGTH 16
+#define MAX_IP 255
+
+typedef struct {
+    char ip[IP_LENGTH];
+} ipArray;
 
 // header DNS
 typedef struct {
@@ -39,10 +44,22 @@ typedef struct {
     unsigned short qclass;
 } dns_question;
 
+ipArray* generador_ip(char* ip_addr, char* subnet_mask);
+
 void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje);
-void ssdp(int sock, struct sockaddr_in* dst, struct sockaddr_in* src);
+
+void udp(int sockfd, char* destino, char* addr_src, int puerto);
+
+void udp_flood(int sockfd, char* src, char* dst, int puerto, char* mensaje);
+
+void ssdp(int sockfd, char* src);
+
 void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len);
-void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje);
-void ntp_amp(int sock, char* addr_src);
+
+void memcached(int sockfd, char* addr_src);
+
+void ntp_amp(int sockfd, char* addr_src);
+
+void dns_amp(int sockfd, char* destino, char* addr_src, int puerto);
 
 #endif

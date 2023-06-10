@@ -3,14 +3,15 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include "./includes/tcp_server.h"
 
-#define BUFFER 1024
+#define BUFFER_LEN 1024
 
 int tcp_server(int port) {
     int sockfd, newsockfd;
-    struct sockaddr_in server_addr, client_addr;
+    struct sockaddr_in server_addr;
     socklen_t addrlen = sizeof(struct sockaddr_in);
     
     // Crear socket TCP
@@ -40,20 +41,37 @@ int tcp_server(int port) {
     //newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, (socklen_t *)&addrlen);
     printf("Escuchando en el puerto %d...\n", port);
     while(1){
+        struct sockaddr_in client_addr;
+        socklen_t client_addr_len = sizeof(client_addr);
+        char buffer[BUFFER_LEN];
+        newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, &addrlen);
+        ssize_t recv_len = recvfrom(newsockfd, buffer, sizeof(buffer), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+        if (recv_len < 0) {
+            perror("recvfrom() ha fallado");
+            exit(EXIT_FAILURE);
+        }
+        char *source_ip = inet_ntoa(client_addr.sin_addr);
+        int source_port = ntohs(client_addr.sin_port);
+        char client_ip[INET_ADDRSTRLEN];
+	    inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
+        printf("Datagrama TCP recibido\n");
+        printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+        printf("Tamaño del datagrama %zd\n", recv_len);
+        printf("Payload del datagrama: \n%s\n", buffer);
         /*ssize_t bytes_received;
         while ((bytes_received = recv(newsockfd, buffer, BUFFER, 0)) > 0) {
             printf("Received %zd bytes: %s\n", bytes_received, buffer);
             memset(buffer, 0, sizeof(buffer));
         }*/
 
-        newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, &addrlen);
+        //newsockfd = accept(sockfd, (struct sockaddr *)&client_addr, &addrlen);
 
-        printf("no llega ni pa dios");
+        /*printf("no llega ni pa dios");
 
         if (newsockfd < 0) {
             perror("accept failed");
             exit(EXIT_FAILURE);
-        }
+        }*/
     }
     /*
     printf("Received message from client: %s\n", buffer);

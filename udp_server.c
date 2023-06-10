@@ -4,11 +4,17 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>	//tcp header
+#include <netinet/udp.h>	// udp header
+#include <netinet/ip.h>	// ip_header
 #include <arpa/inet.h>
 #include <limits.h>
 #include "./includes/udp_server.h"
+#include "./includes/udp.h"
 
-void hex_to_text(char* hex_string);
+#define BUFFER_LEN 4096
+
+int nullByte(char* str);
 
 void udp_server(int port) {
     // Crear socket
@@ -33,7 +39,7 @@ void udp_server(int port) {
     while (1) {
         struct sockaddr_in client_addr;
         socklen_t client_addr_len = sizeof(client_addr);
-        char buffer[64];
+        char buffer[BUFFER_LEN];
         ssize_t recv_len = recvfrom(sockfd, buffer, sizeof(buffer), 0, (struct sockaddr *) &client_addr, &client_addr_len);
         if (recv_len < 0) {
             perror("recvfrom() ha fallado");
@@ -43,14 +49,59 @@ void udp_server(int port) {
         int source_port = ntohs(client_addr.sin_port);
         char client_ip[INET_ADDRSTRLEN];
 	    inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-        printf("Origen del datagrama %s:%d\n", source_ip, source_port);
-        printf("Tamaño del datagrama %zd\n", recv_len);
-        printf("Payload del datagrama:\n");
-        hex_to_text(buffer);
-        printf("%s", buffer);
-        printf("\n");
-        if (recv_len % 16 != 0) {
+        if(port == 54){
+            printf("Datagrama DNS recibido\n");
+            printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+            printf("Tamaño del datagrama %zd\n", recv_len);
+            printf("Payload del datagrama:\n");
+            printf("Header DNS:\n");
+            dns_header* header = (dns_header*) (buffer);
+            printf("\tIdentificador DNS: 0x%04X\n", ntohs(header->id));
+            printf("\tRecursion de la consulta: %hu\n", header->rd);
+            printf("\tNumero de consultas: %hu\n", ntohs(header->qdcount));
+            printf("Pregunta DNS:\n");
+            int dom_index = nullByte(buffer + sizeof(dns_header));
+            dns_question* question = (dns_question*) (buffer + sizeof(dns_header) + dom_index + 1);
+            char dominio[dom_index];
+            memcpy( dominio, buffer + sizeof(dns_header), dom_index);
+            printf("\tNombre: %s\n", dominio);
+            printf("\tTipo de consulta: %hu", ntohs(question->qtype));
+            if(ntohs(question->qtype) == 255){
+                printf(", ANY, peticion de todos los registros del dominio\n");
+            } else {
+                printf("\n");
+            }
+            printf("\tClase de consulta: %hu, IN", ntohs(question->qclass));
             printf("\n");
+        } else if (port == 1900){
+            printf("Datagrama SSDP recibido\n");
+            printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+            printf("Tamaño del datagrama %zd\n", recv_len);
+            printf("Payload del datagrama: \n%s\n\n", buffer);
+        } else if (port == 11211){
+            printf("Datagrama MEMCACHE recibido\n");
+            printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+            printf("Tamaño del datagrama %zd\n", recv_len);
+            printf("Payload del datagrama: \n%s\n", buffer);
+        } else if (port == 123){
+            printf("Datagrama NTP recibido\n");
+            printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+            printf("Tamaño del datagrama %zd\n", recv_len);
+            printf("Payload del datagrama: \n");
+            int version = (buffer[0] >> 3) & 0x07;
+            int codigo_peticion = buffer[3];
+            printf("\tVersion NTP: %d\n", version);
+            printf("\tCodigo de peticion: %d, ", codigo_peticion);
+            if(codigo_peticion == 42){
+                printf("MON_GETLIST_1\n");
+            } else {
+                printf("\n");
+            }
+        }else {
+            printf("Datagrama UDP recibido\n");
+            printf("Origen del datagrama %s:%d\n", source_ip, source_port);
+            printf("Tamaño del datagrama %zd\n", recv_len);
+            printf("Payload del datagrama: \n%s\n", buffer);
         }
     }
     
@@ -58,21 +109,13 @@ void udp_server(int port) {
     close(sockfd);
 }
 
-void hex_to_text(char* hex_string) {
-    int hex_len = strlen(hex_string);
-    if (hex_len % 2 != 0) {
-        printf("Invalid hexadecimal string\n");
-        return;
+int nullByte(char* str){
+    int index = 0;
+    while (1) {
+        if (str[index] == '\0') {
+            return index;
+        }
+        index++;
     }
-    int text_len = hex_len / 2;
-    char* text_string = (char*) malloc(text_len + 1);
-    text_string[text_len] = '\0';
-
-    for (int i = 0; i < hex_len; i += 2) {
-        char hex_char[3] = {hex_string[i], hex_string[i+1], '\0'};
-        int hex_val = (int) strtol(hex_char, NULL, 16);
-        text_string[i/2] = (char) hex_val;
-    }
-    hex_string = text_string;
-    free(text_string);
+    return 0;
 }

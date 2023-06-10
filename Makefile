@@ -6,7 +6,7 @@ STARGET = server
 LIBS =
 # define the C source files
 SRCS = packet_generator.c tcp.c udp.c checksum.c icmp.c
-SSRCS = server.c udp_server.c tcp_server.c
+SSRCS = server.c udp_server.c tcp_server.c icmp_server.c
 
 all: cliente server
 

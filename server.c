@@ -3,16 +3,15 @@
 #include <string.h> 
 #include "./includes/tcp_server.h"
 #include "./includes/udp_server.h"
+#include "./includes/icmp_server.h"
 
 int main(int argc, char *argv[]) 
 {
     char *protocolo, *puerto;
     int j;
-
     for (j = 1; j < argc; j+=2) {
         if (strcmp(argv[j], "-p") == 0) {
 			if (j + 1 < argc) {
-				printf("%d", strncmp(argv[j+1], "-", 1));
 				if(strncmp(argv[j+1], "-", 1)){
 					puerto = argv[j + 1];
 				} else {
@@ -43,6 +42,8 @@ int main(int argc, char *argv[])
         udp_server(atoi(puerto));
     } else if(strcmp(protocolo,"tcp")==0) {
         tcp_server(atoi(puerto));
+    } else if(strcmp(protocolo,"icmp")==0) {
+        icmp_server();
     }
     return 0; 
 }
