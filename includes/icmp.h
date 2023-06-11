@@ -13,10 +13,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "checksum.h"
+#include "helpers.h"
 
 #define DATAGRAM_LEN 4096
 
-void icmp_flood(int sock, char* src, char* dst, int puerto);
+void icmp_flood(int sock, char* src, char* dst);
 
 #endif

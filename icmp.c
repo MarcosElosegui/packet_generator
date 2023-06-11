@@ -10,19 +10,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "./includes/checksum.h"
+#include "./includes/helpers.h"
 #include "./includes/udp.h"
 #include "./includes/tcp.h"
 #include "./includes/icmp.h"
 
-#define DATAGRAM_LEN 4096
-
 // Funcion que un paquete ICMP ECHO
-void icmp_flood(int sock, char* src, char* dst, int puerto){
+void icmp_flood(int sock, char* src, char* dst){
     while(1){
         // direccion IP de destino
         struct sockaddr_in daddr;
-        if(host_addr(&daddr, dst, puerto) == 1){
+        if(host_addr(&daddr, dst, 0) == 1){
             perror("Error al crear la configuracion IP");
             exit(1);
         }

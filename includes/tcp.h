@@ -17,7 +17,6 @@
 #define PACKET_LEN 4096
 #define OPT_SIZE 20
 
-int host_addr(struct sockaddr_in *h_addr, char *addr, int port);
 
 void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** packet_ret, int* packet_len);
 

@@ -9,25 +9,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "./includes/checksum.h"
+#include "./includes/helpers.h"
 #include "./includes/tcp.h"
 #include "./includes/udp.h"
-
-#define PACKET_LEN 4096
-#define OPT_SIZE 20
-
-//Funcion que dados una direccion y un puerto crea una estructura sockaddr_in
-int host_addr(struct sockaddr_in *h_addr, char *addr, int port){
-	struct sockaddr_in host;
-	host.sin_family = AF_INET;
-	host.sin_port = htons(port);
-	if (inet_pton(AF_INET, addr, &host.sin_addr) != 1)
-	{
-		return 1;
-	}
-	*h_addr = host;
-	return 0;
-}
 
 //Funcion que crea un paquete SYN TCP con la direccion de origen y destino dadas
 void tcp_syn_packet(struct sockaddr_in* src, struct sockaddr_in* dst, char** packet_ret, int* packet_len){

@@ -13,14 +13,6 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define DATAGRAM_LEN 4096
-#define IP_LENGTH 16
-#define MAX_IP 255
-
-typedef struct {
-    char ip[IP_LENGTH];
-} ipArray;
-
 // header DNS
 typedef struct {
     unsigned short id;
@@ -44,9 +36,7 @@ typedef struct {
     unsigned short qclass;
 } dns_question;
 
-ipArray* generador_ip(char* ip_addr, char* subnet_mask);
-
-void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje);
+void udp_datagram(struct sockaddr_in* src, struct sockaddr_in* dst, char** datagram_ret, int* datagram_len, char* mensaje, int size);
 
 void udp(int sockfd, char* destino, char* addr_src, int puerto);
 

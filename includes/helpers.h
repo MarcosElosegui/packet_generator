@@ -1,5 +1,5 @@
-#ifndef CHECKSUM_H
-#define CHECKSUM_H
+#ifndef HELPERS_H
+#define HELPERS_H
 
 #include <stdio.h>
 #include <string.h>
@@ -10,6 +10,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#define DATAGRAM_LEN 4096
+#define IP_LENGTH 16
+#define MAX_IP 255
 
 struct pseudo_header
 {
@@ -21,5 +24,9 @@ struct pseudo_header
 };
 
 unsigned short csum(unsigned short *ptr,int nbytes);
+
+void generador_ip(char* ip_addr, char* subnet_mask);
+
+int host_addr(struct sockaddr_in *h_addr, char *addr, int port);
 
 #endif

@@ -5,7 +5,7 @@ STARGET = server
 
 LIBS =
 # define the C source files
-SRCS = packet_generator.c tcp.c udp.c checksum.c icmp.c
+SRCS = packet_generator.c tcp.c udp.c helpers.c icmp.c
 SSRCS = server.c udp_server.c tcp_server.c icmp_server.c
 
 all: cliente server
@@ -17,4 +17,4 @@ server: $(SSRCS)
 	$(CC) $(CFLAGS) -o $(STARGET) $(SSRCS)
 
 clean:
-	$(RM) *.o *~ $(TARGET) $(SERV_TARGET)
+	$(RM) *.o *~ $(TARGET) $(STARGET)
