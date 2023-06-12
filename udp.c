@@ -142,7 +142,7 @@ void ssdp(int sockfd, char* addr_src) {
 
 	// direccion IP de destino
 	struct sockaddr_in daddr;
-	if(host_addr(&daddr, "127.0.0.1"/*"239.255.255.250"*/, 1900) == 1){
+	if(host_addr(&daddr, "239.255.255.250", 1900) == 1){
 		perror("Error al crear la configuracion IP");
 		exit(1);
 	}
@@ -166,7 +166,7 @@ void ssdp(int sockfd, char* addr_src) {
             perror("No se ha podido enviar el paquete SSDP");
             exit(1);
         } else {
-			printf ("Paquete SSDP enviado a 127.0.0.1. Tamaño : %d \n" , datagram_len);
+			printf ("Paquete SSDP enviado a 239.255.255.250. Tamaño : %d \n" , datagram_len);
 		}
     }
 }
